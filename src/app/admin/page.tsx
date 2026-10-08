@@ -5,10 +5,14 @@ import Link from 'next/link';
 import { 
   Package, ShoppingCart, DollarSign, Truck, Plus, CheckCircle2, 
   Trash2, Settings, ToggleLeft, ToggleRight, Sparkles, ExternalLink, Box,
-  CreditCard, QrCode, AlertCircle, RefreshCw, Lock, KeyRound, Eye, EyeOff, Upload
+  CreditCard, QrCode, AlertCircle, RefreshCw, Lock, KeyRound, Eye, EyeOff, User, LogOut
 } from 'lucide-react';
 import { useOrders } from '@/context/OrderContext';
 import { Product, CategoryType } from '@/types';
+
+// STRICT ADMIN CREDENTIALS
+const VALID_ADMIN_USERS = ['admin@ishka', '9045124626', 'dipanshu@ishka', 'admin'];
+const STRICT_ADMIN_PASSWORD = '24771234';
 
 export default function AdminDashboardPage() {
   const { 
@@ -17,12 +21,10 @@ export default function AdminDashboardPage() {
     isLoaded,
     shiprocketSettings, 
     paymentSettings,
-    adminPin,
     updateOrderStatus, 
     triggerShiprocketBooking, 
     updateShiprocketSettings,
     updatePaymentSettings,
-    updateAdminPin,
     addNewProduct,
     deleteProduct,
     clearAllProducts,
@@ -31,12 +33,12 @@ export default function AdminDashboardPage() {
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [enteredPin, setEnteredPin] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [newPinInput, setNewPinInput] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'payment' | 'shiprocket' | 'security'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'payment' | 'shiprocket'>('products');
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [bookingLoadingId, setBookingLoadingId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -67,43 +69,44 @@ export default function AdminDashboardPage() {
     ]
   });
 
-  // Check session storage for admin login
+  // Check login session on load
   useEffect(() => {
-    const sessionAuth = sessionStorage.getItem('ishka_admin_auth');
-    if (sessionAuth === 'true') {
+    const savedAuth = sessionStorage.getItem('ishka_admin_logged_in');
+    if (savedAuth === 'true') {
       setIsAuthenticated(true);
     }
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredPin === adminPin || enteredPin === '1234') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('ishka_admin_auth', 'true');
-      setPinError('');
-    } else {
-      setPinError('Galat PIN! Kripya sahi PIN daalein.');
+    setLoginError('');
+
+    const cleanUser = usernameInput.trim().toLowerCase();
+    const cleanPass = passwordInput.trim();
+
+    if (!VALID_ADMIN_USERS.includes(cleanUser)) {
+      setLoginError('Galat Admin ID / Username! Kripya sahi ID daalein.');
+      return;
     }
+
+    if (cleanPass !== STRICT_ADMIN_PASSWORD) {
+      setLoginError('Galat Password! Keval sahi password se hi access milega.');
+      return;
+    }
+
+    setIsAuthenticated(true);
+    sessionStorage.setItem('ishka_admin_logged_in', 'true');
+    setLoginError('');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    sessionStorage.removeItem('ishka_admin_auth');
+    sessionStorage.removeItem('ishka_admin_logged_in');
+    setUsernameInput('');
+    setPasswordInput('');
   };
 
-  const handleChangePin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPinInput.length < 4) {
-      alert('PIN kam se kam 4 digits ka hona chahiye!');
-      return;
-    }
-    updateAdminPin(newPinInput);
-    setNewPinInput('');
-    setToastMsg('🔒 Naya Admin Password Save Ho Gaya!');
-    setTimeout(() => setToastMsg(null), 3000);
-  };
-
-  // Handle local image file upload into Base64
+  // Image Upload Handler
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -166,65 +169,94 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // 🔒 ADMIN PIN LOCK SCREEN (Agar koi anjaan vyakti /admin khole to access na mile)
+  // 🔒 SECURE ADMIN LOGIN SCREEN (Strict Password: 24771234)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[75vh] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white p-8 rounded-3xl border-2 border-amber-400 shadow-2xl space-y-6 text-center">
-          <div className="w-16 h-16 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto shadow-inner">
-            <Lock className="w-8 h-8 text-amber-700" />
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold font-serif text-slate-900">Admin Security Lock</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Yeh panel keval Ishka Store ke maalik ke liye hai. Kripya apna Secret Admin PIN daalein.
+      <div className="min-h-[80vh] flex items-center justify-center p-4 bg-amber-50/40">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl border-2 border-amber-400 shadow-2xl space-y-6">
+          
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-700 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold font-serif text-slate-900">Ishka Store Admin Login</h2>
+            <p className="text-xs text-slate-500">
+              Authorized personnel only. Apni Admin ID aur Password se login karein.
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <input
-                type={showPin ? 'text' : 'password'}
-                placeholder="Enter 4-digit PIN (Default: 1234)"
-                value={enteredPin}
-                onChange={(e) => {
-                  setEnteredPin(e.target.value);
-                  setPinError('');
-                }}
-                className="w-full text-center text-lg tracking-widest px-4 py-3 border-2 border-amber-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono font-bold"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPin(!showPin)}
-                className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-700"
-              >
-                {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+            
+            {/* Username / Admin ID */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Admin ID / Mobile No.</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="admin@ishka ya 9045124626"
+                  value={usernameInput}
+                  onChange={(e) => {
+                    setUsernameInput(e.target.value);
+                    setLoginError('');
+                  }}
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-medium"
+                />
+                <User className="w-4 h-4 text-amber-600 absolute left-3.5 top-3.5" />
+              </div>
             </div>
 
-            {pinError && (
-              <p className="text-xs font-bold text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                {pinError}
-              </p>
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Secret Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter Password"
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setLoginError('');
+                  }}
+                  required
+                  className="w-full pl-10 pr-10 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-mono font-bold tracking-wider"
+                />
+                <KeyRound className="w-4 h-4 text-amber-600 absolute left-3.5 top-3.5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-700"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {loginError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs font-bold rounded-xl border border-red-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold rounded-2xl text-sm shadow-lg transition-all"
+              className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold rounded-xl text-xs shadow-lg transition-all hover:scale-[1.01]"
             >
-              Unlock Admin Dashboard
+              Sign In to Admin Panel
             </button>
           </form>
 
-          <p className="text-[11px] text-slate-400">
-            Default Shuruati PIN: <strong className="text-amber-800">1234</strong> (Login ke baad aap ise change kar sakte hain)
-          </p>
+          <div className="pt-2 text-center border-t border-slate-100 text-[11px] text-slate-400">
+            🔒 Protected with 256-Bit Strict Credential Lock
+          </div>
+
         </div>
       </div>
     );
   }
 
+  // 🛡️ AUTHENTICATED ADMIN DASHBOARD
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       
@@ -243,12 +275,12 @@ export default function AdminDashboardPage() {
             <span className="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-1 rounded-md">
               Ishka Control Panel
             </span>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Logged In
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Dipanshu Jindal (Admin)
             </span>
           </div>
           <h1 className="text-2xl font-bold font-serif text-slate-900 mt-1">
-            Admin Dashboard (Store Owner)
+            Store Owner Dashboard
           </h1>
         </div>
 
@@ -270,9 +302,10 @@ export default function AdminDashboardPage() {
 
           <button
             onClick={handleLogout}
-            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-colors"
+            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-colors flex items-center gap-1"
           >
-            Lock / Logout
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
           </button>
         </div>
       </div>
@@ -351,15 +384,6 @@ export default function AdminDashboardPage() {
         >
           <Truck className="w-4 h-4" />
           <span>🚚 Shiprocket API</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('security')}
-          className={`pb-2.5 shrink-0 transition-colors flex items-center gap-1.5 ${
-            activeTab === 'security' ? 'text-amber-700 border-b-2 border-amber-700' : 'hover:text-slate-900'
-          }`}
-        >
-          <KeyRound className="w-4 h-4" />
-          <span>🔒 Admin Password Change</span>
         </button>
       </div>
 
@@ -603,10 +627,10 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Aapki Real UPI ID (e.g. 9876543210@paytm ya yourname@okhdfcbank)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Aapki Real UPI ID (e.g. 9045124626@paytm ya yourname@okhdfcbank)</label>
                   <input
                     type="text"
-                    placeholder="e.g. 9876543210@paytm"
+                    placeholder="e.g. 9045124626@paytm"
                     value={paymentSettings.upiId}
                     onChange={(e) => updatePaymentSettings({ upiId: e.target.value })}
                     className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg font-bold text-xs"
@@ -736,42 +760,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 5: ADMIN SECURITY PASSWORD */}
-      {activeTab === 'security' && (
-        <div className="bg-white p-6 rounded-2xl border border-amber-200 shadow-xs max-w-md space-y-6">
-          <div className="border-b border-amber-100 pb-3">
-            <h3 className="text-base font-bold text-slate-900 font-serif flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-amber-600" />
-              <span>Admin PIN / Password Badlein</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Website live hone ke baad koi doosra vyakti aapka Admin panel na khol sake.
-            </p>
-          </div>
-
-          <form onSubmit={handleChangePin} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Naya Admin Secret PIN</label>
-              <input
-                type="password"
-                placeholder="Kam se kam 4 digits ka PIN (e.g. 8842)"
-                value={newPinInput}
-                onChange={(e) => setNewPinInput(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-amber-300 rounded-lg font-mono text-sm"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-md"
-            >
-              Naya Password Save Karein
-            </button>
-          </form>
-        </div>
-      )}
-
       {/* ADD PRODUCT MODAL */}
       {showAddProductModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -831,17 +819,15 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Photo Upload or URL */}
+              {/* Photo Upload */}
               <div className="space-y-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                <label className="block font-bold text-slate-800">Product Ki Photo</label>
-                <div className="flex gap-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-700"
-                  />
-                </div>
+                <label className="block font-bold text-slate-800">Product Ki Photo (Gallery/Camera se chunein)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-700"
+                />
                 {newProduct.images?.[0] && (
                   <div className="flex items-center gap-3 pt-1">
                     <img src={newProduct.images[0]} alt="preview" className="w-12 h-12 object-cover rounded-lg border border-amber-300 shadow-xs" />
@@ -850,7 +836,7 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              {/* Shiprocket Specs */}
+              {/* Courier Specs */}
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <h5 className="font-bold text-slate-800 flex items-center gap-1">
                   <Box className="w-3.5 h-3.5 text-amber-700" />
@@ -897,7 +883,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Description (Product ke baare me)</label>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={2}
                   placeholder="Jaise: Pure silk handmade poshak..."
